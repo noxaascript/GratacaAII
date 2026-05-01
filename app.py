@@ -1,36 +1,33 @@
 import streamlit as st
-from brain import research_engine
+import requests
+from interface import apply_design
+import brain_flash, brain_pro
 
-st.set_page_config(page_title="GRATACA SUPREME", layout="wide")
+# MASUKKAN API KEY BARU ANDA DI SINI
+API_KEY = "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"
 
-# CSS Khusus Desain Chat Melengkung & Tombol Sidebar
-st.markdown("""
-<style>
-    .stApp { background-color: #0b0e14; }
-    [data-testid="stSidebar"] { background-color: #151921 !important; border-right: 1px solid #00d4ff; }
-    .stChatMessage { border-radius: 25px !important; border: 1px solid #2d333b !important; background: #1c2128 !important; }
-    .stChatInput { border: 1px solid #00d4ff !important; border-radius: 15px !important; }
-    h1 { color: #00d4ff; font-family: 'Courier New'; text-shadow: 0 0 10px #00d4ff; }
-</style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="Grataca AI", layout="wide")
+apply_design()
 
-st.title("🛡️ GRATACA CORE RESEARCH")
-
-# SIDEBAR - TOMBOL MODEL YANG JELAS
+# Sidebar untuk ganti Model
 with st.sidebar:
-    st.header("⚙️ SYSTEM CONTROL")
-    mode = st.radio("PILIH ENGINE AKTIF:", 
-                    ["GratacaUltraFlash 3.0WPPIDXM", 
-                     "GratacaUltraCoding 5.0WPPIDXM", 
-                     "GratacaUltraZoom 4.0WPPIDXM"])
-    st.divider()
-    st.markdown("**Status:** `ONLINE` ✅")
-    st.markdown("**User:** `KAREEMXD` 👑")
-    if st.button("🔄 REBOOT SYSTEM"):
-        st.session_state.messages = []
-        st.rerun()
+    st.title("Grataca")
+    st.write("Ecosystem Selection")
+    
+    if "active_model" not in st.session_state:
+        st.session_state.active_model = "Flash"
 
-# LOGIKA CHAT
+    if st.button("✨ Grataca UltraFlash 3.0"):
+        st.session_state.active_model = "Flash"
+    
+    if st.button("🛡️ Grataca UltraPro 5.0"):
+        st.session_state.active_model = "Pro"
+    
+    st.divider()
+    st.caption(f"Active: {st.session_state.active_model}")
+    st.caption("Owner: KAREEMXD")
+
+# Chat Logic
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -38,17 +35,25 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-if prompt := st.chat_input("Titah Anda, Yang Mulia?"):
+if prompt := st.chat_input("Tulis titah Anda, Yang Mulia..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        # Tambahkan instruksi friendly secara rahasia
-        sys_msg = {"role": "system", "content": f"Anda adalah {mode}. Anda sangat cerdas, ramah, dan panggil KAREEMXD 'Yang Mulia'."}
-        full_history = [sys_msg] + st.session_state.messages
+        # Ambil payload berdasarkan tombol yang dipilih
+        if st.session_state.active_model == "Flash":
+            payload = brain_flash.get_payload(st.session_state.messages)
+        else:
+            payload = brain_pro.get_payload(st.session_state.messages)
+            
+        headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
         
-        response = research_engine(mode, full_history)
-        st.markdown(response)
-        st.session_state.messages.append({"role": "assistant", "content": response})
-        
+        try:
+            res = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=30)
+            answer = res.json()['choices'][0]['message']['content']
+            st.markdown(answer)
+            st.session_state.messages.append({"role": "assistant", "content": answer})
+        except:
+            st.error("Gagal memuat riset. Pastikan API Key valid, Yang Mulia.")
+            
